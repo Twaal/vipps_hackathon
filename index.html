@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TÆPPIN' — Turn Every Payment Into a Power Move</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+<script type="module" src="/src/main.js"></script>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <div class="wordmark">TÆPPIN'</div>
+    <div class="nav-badge">VIPPS HACKATHON 2026</div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="live-badge"><span class="live-dot"></span> LIVE · SIMULATION ACTIVE</div>
+  <h1>Turn Every Payment Into a <span class="accent">Power Move</span></h1>
+  <p class="sub">A real-time territory war, embedded inside the Vipps app.</p>
+  <div class="faction-dots">
+    <span class="dots">
+      <span class="fd" style="background:var(--ruby)"></span>
+      <span class="fd" style="background:var(--cobalt)"></span>
+      <span class="fd" style="background:var(--jade)"></span>
+      <span class="fd" style="background:var(--amber)"></span>
+    </span>
+    <span class="label">4 factions. 1 city. Your tap decides.</span>
+  </div>
+</header>
+
+<!-- FACTION PICKER -->
+<section id="join">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Join the War</div>
+      <h2>Choose Your Faction</h2>
+      <p>Pick a side. Every purchase you make becomes a tap for your colour.</p>
+    </div>
+    <div class="faction-grid" id="faction-grid"></div>
+    <div class="tap-zone" id="tap-zone"></div>
+  </div>
+</section>
+
+<!-- MAP -->
+<section id="map-section">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Live City Map · Oslo</div>
+      <h2>Watch The City Flip In Real Time</h2>
+      <p>41 merchants across central Oslo. Whoever taps most owns the turf.</p>
+    </div>
+    <div id="map"></div>
+    <div class="map-legend">
+      <span class="item"><span class="sw" style="background:var(--ruby)"></span> Ruby</span>
+      <span class="item"><span class="sw" style="background:var(--cobalt)"></span> Cobalt</span>
+      <span class="item"><span class="sw" style="background:var(--jade)"></span> Jade</span>
+      <span class="item"><span class="sw" style="background:var(--amber)"></span> Amber</span>
+      <span class="item">🔒 = active 3h shield</span>
+    </div>
+  </div>
+</section>
+
+<!-- SCOREBOARD -->
+<section id="scoreboard">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Live Scoreboard</div>
+      <h2>Who Controls Oslo Right Now</h2>
+    </div>
+    <div class="score-grid" id="score-grid"></div>
+  </div>
+</section>
+
+<!-- ACTIVITY + CHART -->
+<section id="activity">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Live Ticker</div>
+      <h2>Every Tap, As It Happens</h2>
+    </div>
+    <div class="feed-card">
+      <div class="feed" id="feed"></div>
+    </div>
+  </div>
+</section>
+
+<!-- REWARDS -->
+<section id="rewards">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">How Rewards Work</div>
+      <h2>Two Ways To Win</h2>
+    </div>
+    <div class="reward-grid">
+      <div class="reward-card vault">
+        <div class="topbar"></div>
+        <div class="kicker">Hero Drop</div>
+        <h3>Vault Cracker 🏆</h3>
+        <p class="desc">The single user whose tap triggers a takeover gets a guaranteed premium reward.</p>
+        <ul class="reward-list">
+          <li><span class="chk">✦</span> 100–500 NOK Vipps cash</li>
+          <li><span class="chk">✦</span> High-value meal voucher</li>
+          <li><span class="chk">✦</span> Exclusive faction badge</li>
+        </ul>
+      </div>
+      <div class="reward-card care">
+        <div class="topbar"></div>
+        <div class="kicker">Faction Drop</div>
+        <h3>Care Package 📦</h3>
+        <p class="desc">Every faction member city-wide gets a silent drop when their faction captures a store.</p>
+        <ul class="reward-list">
+          <li><span class="chk">✦</span> Free coffee voucher</li>
+          <li><span class="chk">✦</span> Merchant discount</li>
+          <li><span class="chk">✦</span> 24h expiry = next-day visit</li>
+        </ul>
+        <div class="care-counter">Your faction has earned <b id="care-count">0</b> care packages today</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANTI-EXPLOIT -->
+<section id="rules">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Fair Play</div>
+      <h2>Anti-Exploit Rules</h2>
+    </div>
+    <div class="rules-grid">
+      <div class="rule-card"><div class="rule-icon">⏱️</div><div><h4>Daily Cap</h4><p>1 loot per store per 24h. No farming the same till.</p></div></div>
+      <div class="rule-card"><div class="rule-icon">📍</div><div><h4>Active Proximity</h4><p>Must have tapped in your city in the last 60 min.</p></div></div>
+      <div class="rule-card"><div class="rule-icon">💳</div><div><h4>5 NOK Minimum</h4><p>Real purchases only — no 1-øre spam taps.</p></div></div>
+      <div class="rule-card"><div class="rule-icon">⚡</div><div><h4>Underdog Multiplier</h4><p>Factions below 15% territory get 2×–3× tap power.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- KPI -->
+<section id="kpi">
+  <div class="wrap">
+    <div class="kpi-bar">
+      <div class="kpi"><div class="num">+25%</div><div class="lbl">Target MoM POS transaction volume</div></div>
+      <div class="kpi"><div class="num">&lt; 1.5s</div><div class="lbl">Transaction → map update latency</div></div>
+      <div class="kpi"><div class="num">18–30</div><div class="lbl">Age group, locked via BankID</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="ft">Built at Vipps Hackathon 2026 · Tæppin' Demo</div>
+  <div class="dots">
+    <span class="fd" style="background:var(--ruby)"></span>
+    <span class="fd" style="background:var(--cobalt)"></span>
+    <span class="fd" style="background:var(--jade)"></span>
+    <span class="fd" style="background:var(--amber)"></span>
+  </div>
+</footer>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- VAULT MODAL -->
+<div id="vault-overlay">
+  <div class="vault-box">
+    <div class="vault-ring"><div class="vault-core">🔓</div></div>
+    <h2>YOU CRACKED THE VAULT</h2>
+    <div class="reward-amt">250 NOK</div>
+    <div class="reward-sub">Your takeover at <span class="store-name" id="vault-store">—</span> earned the Hero Drop</div>
+    <button class="vault-close" id="vault-close">Claim Reward</button>
+  </div>
+</div>
+
+</body>
+</html>
