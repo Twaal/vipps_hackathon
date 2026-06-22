@@ -849,7 +849,29 @@ function showOnbStep(i) {
   onbDots.forEach((d, idx) => d.classList.toggle('on', idx === onbStep));
   const cur = onbSlides[onbStep];
   if (cur && cur.dataset.reveal === 'faction' && !userFaction) onbRevealFaction();
+  notifyParent({ type: 'taeppin:onb', step: onbStep, total: onbSlides.length });
 }
+
+function notifyParent(msg) {
+  if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*');
+}
+
+// onboarding still on screen?
+function onbVisible() {
+  return onbEl && document.body.contains(onbEl) && !onbEl.classList.contains('hide');
+}
+
+// arrow-key / parent-driven navigation through the pitch
+function onbNavigate(dir) {
+  if (!onbVisible()) return;
+  if (dir > 0 && onbStep >= onbSlides.length - 1) finishOnboarding();
+  else showOnbStep(onbStep + dir);
+}
+window.__onbNav = onbNavigate; // called by the presenter page (same-origin)
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { if (onbVisible()) { e.preventDefault(); onbNavigate(1); } }
+  else if (e.key === 'ArrowLeft') { if (onbVisible()) { e.preventDefault(); onbNavigate(-1); } }
+});
 
 function onbRevealFaction() {
   const f = assignRandomFaction(true);
@@ -875,6 +897,7 @@ function enterMapStage() {
   if (!mapReady) { pendingStage = true; focusUser(); return; }
   pendingStage = false;
   stageActive = true; // freeze loot boxes so the nearest one (and its route) stays put
+  notifyParent({ type: 'taeppin:stage' });
   document.body.classList.add('map-stage');
   google.maps.event.trigger(map, 'resize');
   focusUser();
