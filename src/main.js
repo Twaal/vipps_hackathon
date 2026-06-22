@@ -2,7 +2,6 @@
    TÆPPIN' — client-side simulation (Vite)
    ============================================================ */
 import './style.css';
-import { Delaunay } from 'd3-delaunay';
 
 const GMAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -74,9 +73,9 @@ function buildMerchants() {
   return RAW.map((m, i) => {
     const owner = owners[i];
     const scores = { ruby:0, cobalt:0, jade:0, amber:0 };
-    // seed scores so the current owner leads
+    // seed scores so the current owner leads (modest lead → flips stay lively)
     FKEYS.forEach(f => scores[f] = 3 + Math.floor(Math.random()*6));
-    scores[owner] += 12 + Math.floor(Math.random()*8);
+    scores[owner] += 5 + Math.floor(Math.random()*5);
     const shielded = shieldedIdx.has(i);
     return {
       id: i, name: m[0], lat: m[1], lng: m[2],
@@ -88,8 +87,9 @@ function buildMerchants() {
 
 let merchants = buildMerchants();
 let userFaction = null;
-let carePackages = 0;
-let userTriggeredVault = false;
+let bongs = 0;            // lottery tickets ("bongs") earned from taps
+let boxesGrabbed = 0;     // loot boxes the player has captured
+let jackpotsRemaining = 5; // student-loan-forgiveness loot boxes left city-wide
 const totalTaps = { ruby:0, cobalt:0, jade:0, amber:0 };
 const memberCounts = { ruby: 0, cobalt: 0, jade: 0, amber: 0 };
 FKEYS.forEach(f => memberCounts[f] = 800 + Math.floor(Math.random()*900));
@@ -97,7 +97,7 @@ FKEYS.forEach(f => memberCounts[f] = 800 + Math.floor(Math.random()*900));
 const leader = m => FKEYS.reduce((a,b) => m.scores[b] > m.scores[a] ? b : a, FKEYS[0]);
 const storeCounts = () => { const c={ruby:0,cobalt:0,jade:0,amber:0}; merchants.forEach(m=>c[m.owner]++); return c; };
 
-/* ---------------- FACTION PICKER ---------------- */
+/* ---------------- FACTION ROSTER (assigned, not chosen) ---------------- */
 const fgrid = document.getElementById('faction-grid');
 FKEYS.forEach(f => {
   const F = FACTIONS[f];
@@ -113,24 +113,39 @@ FKEYS.forEach(f => {
     <div class="desc">${F.desc}</div>
     <div class="members"><b id="mem-${f}">${memberCounts[f].toLocaleString()}</b> warriors</div>
   `;
-  card.addEventListener('click', () => joinFaction(f));
   fgrid.appendChild(card);
 });
 
-function joinFaction(f) {
+// Factions are assigned at random to keep the war balanced — you can't pick.
+function assignRandomFaction(silent = false) {
+  const f = FKEYS[Math.floor(Math.random() * FKEYS.length)];
   userFaction = f;
   document.querySelectorAll('.faction-card').forEach((c, i) => c.classList.toggle('selected', FKEYS[i] === f));
-  renderTapZone();
+  renderJoinZone();
   renderScoreboard();
-  updateCare();
-  showToast(`You joined ${FACTIONS[f].name}! Tap to fight for Oslo.`);
+  updateStats();
+  if (!silent) showToast(`🎲 You've been drafted into ${FACTIONS[f].name}!`);
+  return f;
 }
 
-function renderTapZone() {
+function renderJoinZone() {
   const tz = document.getElementById('tap-zone');
-  if (!userFaction) { tz.innerHTML = ''; return; }
-  tz.innerHTML = `<button class="tap-btn" id="tap-btn">⚡ TAP NOW <span style="font-size:14px;font-weight:500;">(Simulate Payment)</span></button>`;
+  if (!userFaction) {
+    tz.innerHTML = `<button class="tap-btn enter-btn" id="enter-btn">🎲 ENTER THE WAR <span style="font-size:14px;font-weight:500;">(get a random faction)</span></button>`;
+    document.getElementById('enter-btn').addEventListener('click', () => assignRandomFaction());
+    return;
+  }
+  const F = FACTIONS[userFaction];
+  tz.innerHTML = `
+    <div class="player-hud">
+      <div class="hud-faction" style="--fc:${F.color}"><span class="hud-dot"></span>${F.name}</div>
+      <div class="hud-stat"><b id="hud-bongs">0</b><span>bongs 🎟️</span></div>
+      <div class="hud-stat"><b id="hud-boxes">0</b><span>loot boxes 🎁</span></div>
+    </div>
+    <button class="tap-btn" id="tap-btn">⚡ TAP NOW <span style="font-size:14px;font-weight:500;">(Simulate Payment)</span></button>
+    <div class="hud-hint">Pan the map so a 🎁 store sits in the centre, then tap to grab the loot box.</div>`;
   document.getElementById('tap-btn').addEventListener('click', onTap);
+  updateStats();
 }
 
 /* ---------------- MAP (Google Maps JS API) ---------------- */
@@ -149,27 +164,67 @@ const DARK_STYLE = [
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0b0b0d' }] },
 ];
 
-// --- Turf-wars territory: a Voronoi cell per store, coloured by its owner ---
+// --- Turf-wars territory: a hex grid, each hex coloured by its nearest store ---
 const lats = merchants.map(m => m.lat);
 const lngs = merchants.map(m => m.lng);
 const PAD_LAT = 0.006, PAD_LNG = 0.012;
-const bbox = [
-  Math.min(...lngs) - PAD_LNG, Math.min(...lats) - PAD_LAT,
-  Math.max(...lngs) + PAD_LNG, Math.max(...lats) + PAD_LAT,
-];
-// d3-delaunay works in x/y; use lng as x and lat as y.
-const delaunay = Delaunay.from(merchants.map(m => [m.lng, m.lat]));
-const voronoi = delaunay.voronoi(bbox);
+const LAT0 = 59.9139;
+const KX = Math.cos(LAT0 * Math.PI / 180); // lng→lat distance scale (~0.5 at Oslo)
+const HEX_R = 0.0013;                       // hex circumradius, in latitude-degrees
+
+// Build pointy-top hexes covering the store bounds; assign each to its nearest store.
+function buildHexes() {
+  const latMin = Math.min(...lats) - PAD_LAT, latMax = Math.max(...lats) + PAD_LAT;
+  const lngMin = Math.min(...lngs) - PAD_LNG, lngMax = Math.max(...lngs) + PAD_LNG;
+  const R = HEX_R;
+  const w = Math.sqrt(3) * R;   // column spacing (in X = lng*KX units)
+  const vstep = 1.5 * R;        // row spacing (in latitude units)
+  const Xmin = lngMin * KX, Xmax = lngMax * KX;
+  const storePts = merchants.map(m => ({ id: m.id, x: m.lng * KX, y: m.lat }));
+  const hexes = [];
+  let row = 0;
+  for (let y = latMin; y <= latMax + R; y += vstep, row++) {
+    const xOff = (row % 2) ? w / 2 : 0;
+    for (let x = Xmin - xOff; x <= Xmax + w; x += w) {
+      let best = storePts[0], bd = Infinity;
+      for (const s of storePts) { const d = (s.x - x) ** 2 + (s.y - y) ** 2; if (d < bd) { bd = d; best = s; } }
+      const path = [];
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 180 * (60 * i - 30);
+        path.push({ lat: y + R * Math.sin(a), lng: (x + R * Math.cos(a)) / KX });
+      }
+      hexes.push({ storeId: best.id, path });
+    }
+  }
+  return hexes;
+}
+const hexDefs = buildHexes();
 
 let map = null;
 let infoWindow = null;
 let openInfoId = null;
-const cells = {};
+const hexesByStore = {};   // storeId -> [google.maps.Polygon]
 const markers = {};
 
-function territoryStyle(owner) {
+let youMarker = null;
+let userLocation = { lat: 59.9139, lng: 10.7522 }; // default: central Oslo
+let locationReal = false;
+let mapReady = false;
+let pendingFocus = false;
+
+// distance helpers
+function distMeters(a, b) {
+  const R = 6371000, toR = x => x * Math.PI / 180;
+  const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+  const s = Math.sin(dLat/2)**2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+const fmtDist = m => m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(1)} km`;
+const mapsDirUrl = m => `https://www.google.com/maps/dir/?api=1&destination=${m.lat},${m.lng}`;
+
+function hexStyle(owner) {
   const c = FACTIONS[owner].color;
-  return { strokeColor: c, strokeOpacity: 0.9, strokeWeight: 1.5, fillColor: c, fillOpacity: 0.30 };
+  return { strokeColor: c, strokeOpacity: 0.35, strokeWeight: 1, fillColor: c, fillOpacity: 0.38 };
 }
 function storeIcon(owner) {
   return {
@@ -194,7 +249,7 @@ function loadGoogleMaps() {
 
 function initMap() {
   map = new google.maps.Map(document.getElementById('map'), {
-    center: { lat: 59.9139, lng: 10.7522 },
+    center: userLocation,
     zoom: 14,
     backgroundColor: '#0E0E10',
     styles: DARK_STYLE,
@@ -202,20 +257,20 @@ function initMap() {
     streetViewControl: false,
     fullscreenControl: false,
     clickableIcons: false,
+    gestureHandling: 'greedy', // scroll wheel zooms directly, no Ctrl needed
   });
   infoWindow = new google.maps.InfoWindow();
   infoWindow.addListener('closeclick', () => { openInfoId = null; });
 
-  merchants.forEach((m, i) => {
-    // territory polygon
-    const poly = voronoi.cellPolygon(i);
-    if (poly) {
-      const path = poly.map(([x, y]) => ({ lat: y, lng: x }));
-      const cell = new google.maps.Polygon({ paths: path, map, ...territoryStyle(m.owner) });
-      cell.addListener('click', () => openInfo(m));
-      cells[m.id] = cell;
-    }
-    // store pin on top of its territory
+  // territory hexes (drawn under the pins, not individually clickable)
+  hexDefs.forEach(h => {
+    const owner = merchants[h.storeId].owner;
+    const poly = new google.maps.Polygon({ paths: h.path, map, clickable: false, zIndex: 1, ...hexStyle(owner) });
+    (hexesByStore[h.storeId] ||= []).push(poly);
+  });
+
+  // store pins on top of their territory
+  merchants.forEach(m => {
     const mk = new google.maps.Marker({
       position: { lat: m.lat, lng: m.lng },
       map, icon: storeIcon(m.owner), zIndex: 10,
@@ -224,6 +279,87 @@ function initMap() {
     mk.addListener('click', () => openInfo(m));
     markers[m.id] = mk;
   });
+
+  mapReady = true;
+  focusUser();
+  if (pendingStage) enterMapStage();
+}
+
+/* ---------------- LOCATION & "NEAR YOU" ---------------- */
+function focusUser() {
+  if (!map) { pendingFocus = true; return; }
+  pendingFocus = false;
+  map.panTo(userLocation);
+  if (!youMarker) {
+    youMarker = new google.maps.Marker({
+      position: userLocation, map, zIndex: 100,
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0, fillOpacity: 0, strokeOpacity: 0 },
+      label: { text: '📍', fontSize: '32px' },
+      title: locationReal ? 'You are here' : 'You (approx. central Oslo)',
+    });
+  } else {
+    youMarker.setPosition(userLocation);
+  }
+  renderNearby();
+}
+
+function requestLocation() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(false);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude, longitude } = pos.coords;
+        // only use a real fix if it's actually near Oslo; otherwise keep the demo city
+        if (Math.abs(latitude - 59.9139) < 0.6 && Math.abs(longitude - 10.7522) < 1.2) {
+          userLocation = { lat: latitude, lng: longitude };
+          locationReal = true;
+        }
+        resolve(true);
+      },
+      () => resolve(false),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+}
+
+function renderNearby() {
+  const el = document.getElementById('nearby-list');
+  if (!el) return;
+  const near = merchants
+    .map(m => ({ m, d: distMeters(userLocation, m) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 6);
+  el.innerHTML = near.map(({ m, d }) => {
+    const F = FACTIONS[m.owner];
+    const loot = occupiedStores.has(m.id) ? ' <span class="near-loot">🎁</span>' : '';
+    return `<div class="near-card" data-id="${m.id}">
+      <div class="near-top"><span class="near-dot" style="background:${F.color}"></span><span class="near-name">${m.name}${loot}</span></div>
+      <div class="near-meta">${F.name} controls · <b>${fmtDist(d)}</b> away</div>
+      <div class="near-actions">
+        <span class="near-view">View breakdown</span>
+        <a class="near-dir" href="${mapsDirUrl(m)}" target="_blank" rel="noopener">Directions ↗</a>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.near-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.near-dir')) return; // let the directions link open
+      const m = merchants[+card.dataset.id];
+      if (map) map.panTo({ lat: m.lat, lng: m.lng });
+      openInfo(m);
+    });
+  });
+}
+
+function setStoreHexes(m, flash) {
+  const hs = hexesByStore[m.id];
+  if (!hs) return;
+  if (flash) {
+    hs.forEach(p => p.setOptions({ strokeColor: '#ffffff', fillColor: '#ffffff', fillOpacity: 0.75 }));
+    setTimeout(() => hs.forEach(p => p.setOptions(hexStyle(m.owner))), 300);
+  } else {
+    hs.forEach(p => p.setOptions(hexStyle(m.owner)));
+  }
 }
 
 function openInfo(m) {
@@ -259,28 +395,114 @@ function popupHTML(m) {
   const shieldTxt = m.shielded
     ? `🔒 Shielded — protected for now`
     : `🔓 Open — can be captured`;
+  const loot = occupiedStores.has(m.id)
+    ? `<div class="pop-loot">🎁 Loot box here — tap at this store to grab it</div>` : '';
+  const dist = fmtDist(distMeters(userLocation, m));
   return `<div class="pop-title">${m.name}</div>
     <div class="pop-owner" style="color:${FACTIONS[m.owner].color}">● Owned by ${FACTIONS[m.owner].name}</div>
     ${rows}
-    <div class="pop-shield">${shieldTxt}</div>`;
+    <div class="pop-shield">${shieldTxt}</div>
+    ${loot}
+    <div class="pop-dist">📍 ${dist} from you</div>
+    <a class="pop-link" href="${mapsDirUrl(m)}" target="_blank" rel="noopener">Open in Google Maps ↗</a>`;
 }
 
 function setMarkerOwner(m, animate) {
   const mk = markers[m.id];
-  const cell = cells[m.id];
   if (mk) mk.setIcon(storeIcon(m.owner));
-  if (cell) cell.setOptions(territoryStyle(m.owner));
+  setStoreHexes(m, animate);
   updateMarkerTooltip(m);
   if (openInfoId === m.id && infoWindow) infoWindow.setContent(popupHTML(m));
-  if (animate && (mk || cell)) {
-    // flash the captured turf white, then settle into the new faction colour
-    if (mk) mk.setIcon({ ...storeIcon(m.owner), fillColor: '#ffffff' });
-    if (cell) cell.setOptions({ strokeColor: '#ffffff', fillColor: '#ffffff', fillOpacity: 0.6 });
-    setTimeout(() => {
-      if (mk) mk.setIcon(storeIcon(m.owner));
-      if (cell) cell.setOptions(territoryStyle(m.owner));
-    }, 280);
+  if (animate && mk) {
+    // flash the captured pin white, then settle into the new faction colour
+    mk.setIcon({ ...storeIcon(m.owner), fillColor: '#ffffff' });
+    setTimeout(() => mk.setIcon(storeIcon(m.owner)), 300);
   }
+}
+
+/* ---------------- LOOT BOXES ---------------- */
+// Loot boxes spawn on random stores. Anyone can grab one by tapping the store.
+// Most are worth NOK 50–100; 5 boxes city-wide hold Student Loan Forgiveness.
+let lootBoxes = [];          // { id, storeId, jackpot, marker, timer }
+let lootSeq = 0;
+const occupiedStores = new Set();
+const MAX_BOXES = 6;
+const LOOT_TTL = 17000;      // a box disappears if not grabbed in ~17s
+let stageActive = false;     // when the full-screen finale is open, freeze loot boxes
+
+function createLootBox(m) {
+  if (!map || occupiedStores.has(m.id)) return null;
+  // jackpot if any of the 5 remain; otherwise a normal NOK 50–100 box
+  const jackpot = jackpotsRemaining > 0 && Math.random() < 0.16;
+  if (jackpot) jackpotsRemaining--;
+  const marker = new google.maps.Marker({
+    position: { lat: m.lat, lng: m.lng },
+    map, zIndex: 60,
+    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0, fillOpacity: 0, strokeOpacity: 0 },
+    label: { text: '🎁', fontSize: '28px' },
+    title: 'Loot box — centre the map here and tap to grab it',
+    animation: google.maps.Animation.BOUNCE,
+  });
+  marker.addListener('click', () => openInfo(m));
+  const box = { id: ++lootSeq, storeId: m.id, jackpot, marker };
+  box.timer = setTimeout(() => despawnLootBox(box, false), LOOT_TTL);
+  lootBoxes.push(box);
+  occupiedStores.add(m.id);
+  updateStats();
+  return box;
+}
+
+function spawnLootBox() {
+  if (!map || lootBoxes.length >= MAX_BOXES) return;
+  const free = merchants.filter(m => !occupiedStores.has(m.id));
+  if (!free.length) return;
+  createLootBox(free[Math.floor(Math.random() * free.length)]);
+}
+
+// Ensure there's at least one loot box close to the player (used for the finale).
+function ensureNearbyLootBox() {
+  if (!map) return null;
+  const existing = nearestLootStore();
+  if (existing) return existing;
+  const target = merchants
+    .filter(m => !occupiedStores.has(m.id))
+    .sort((a, b) => distMeters(userLocation, a) - distMeters(userLocation, b))[0];
+  if (target) createLootBox(target);
+  return nearestLootStore();
+}
+
+function nearestLootStore() {
+  let best = null;
+  for (const box of lootBoxes) {
+    const m = merchants[box.storeId];
+    const d = distMeters(userLocation, m);
+    if (!best || d < best.d) best = { box, m, d };
+  }
+  return best;
+}
+
+function despawnLootBox(box, claimed) {
+  clearTimeout(box.timer);
+  box.marker.setMap(null);
+  occupiedStores.delete(box.storeId);
+  lootBoxes = lootBoxes.filter(b => b.id !== box.id);
+  // a jackpot that vanished unclaimed returns to the city-wide pool
+  if (box.jackpot && !claimed) jackpotsRemaining++;
+  updateStats();
+}
+
+function grabLootBox(box, m) {
+  despawnLootBox(box, true);
+  boxesGrabbed++;
+  if (box.jackpot) {
+    openReward('jackpot', m.name);
+    pushFeed(`<b>YOU</b> cracked a <b>STUDENT-LOAN loot box</b> at <b>${m.name}</b>! 🎓`, userFaction, { mine: true });
+  } else {
+    const value = 50 + Math.floor(Math.random() * 11) * 5; // NOK 50–100
+    showToast(`🎁 Loot box grabbed — NOK ${value} reward!`);
+    pushFeed(`<b>YOU</b> grabbed a loot box at <b>${m.name}</b> — NOK ${value} 💰`, userFaction, { mine: true });
+  }
+  updateStats();
 }
 
 /* ---------------- SCOREBOARD ---------------- */
@@ -374,9 +596,7 @@ function checkTakeover(m, animate=true) {
     m.shielded = true;
     m.shieldExpires = Date.now() + SHIELD_MS;
     setMarkerOwner(m, animate);
-    carePackages += (newLeader === userFaction) ? 1 : 0;
     pushFeed(`<b>${FACTIONS[newLeader].name}</b> captured <b>${m.name}</b>`, newLeader);
-    updateCare();
     return true;
   }
   return false;
@@ -413,11 +633,11 @@ function expireShields() {
 
 function tick() {
   expireShields();
-  const n = 1 + Math.floor(Math.random()*3); // 1-3 merchants
+  const n = 2 + Math.floor(Math.random()*3); // 2-4 merchants
   for (let k=0;k<n;k++) {
     const m = merchants[Math.floor(Math.random()*merchants.length)];
     const f = pickFactionWeighted();
-    const pts = 1 + Math.floor(Math.random()*3);
+    const pts = 1 + Math.floor(Math.random()*4);
     m.scores[f] += pts;
     totalTaps[f] += pts;
     if (!checkTakeover(m)) {
@@ -435,6 +655,7 @@ function tick() {
     }
   });
   renderScoreboard();
+  renderNearby();
 }
 
 /* ---------------- USER TAP ---------------- */
@@ -464,21 +685,30 @@ function onTap(e) {
   setTimeout(()=>rip.remove(), 600);
 
   const m = nearestToCenter();
-  m.scores[userFaction] += 5;           // hero advantage
+
+  // bongs (lottery tickets): 10× on turf you already control
+  const controlled = m.owner === userFaction;
+  const earned = controlled ? 10 : 1;
+  bongs += earned;
+
+  m.scores[userFaction] += 5;           // hero advantage toward a takeover
   totalTaps[userFaction] += 5;
 
+  // grab a loot box if one is sitting on this store
+  const box = lootBoxes.find(b => b.storeId === m.id);
   const took = checkTakeover(m);
 
-  // user's event at top
-  if (took && m.owner === userFaction) {
-    pushFeed(`<b>YOU</b> just tapped at <b>${m.name}</b> and FLIPPED IT! 🔥`, userFaction, {mine:true});
-    openVault(m.name);
+  if (box) {
+    grabLootBox(box, m);                // loot box reward + its own feed line
+  } else if (took && m.owner === userFaction) {
+    pushFeed(`<b>YOU</b> flipped <b>${m.name}</b>! +${earned} bongs 🎟️`, userFaction, {mine:true});
+    showToast(`🔥 You flipped ${m.name}! +${earned} bongs`);
   } else {
-    pushFeed(`<b>YOU</b> just tapped at <b>${m.name}</b>! +1 capture point`, userFaction, {mine:true});
-    showToast('Tap registered! +5 capture points');
+    pushFeed(`<b>YOU</b> tapped at <b>${m.name}</b> — +${earned} bongs${controlled ? ' (10× your turf!)' : ''} 🎟️`, userFaction, {mine:true});
+    showToast(controlled ? `+${earned} bongs — 10× on your turf! 🎟️` : `+${earned} bong 🎟️`);
   }
   if (openInfoId === m.id && infoWindow) infoWindow.setContent(popupHTML(m));
-  renderScoreboard(); updateCare();
+  renderScoreboard(); updateStats();
 
   // cooldown
   let left = 2;
@@ -492,18 +722,28 @@ function onTap(e) {
   }, 1000);
 }
 
-/* ---------------- CARE COUNTER ---------------- */
-function updateCare() {
-  const el = document.getElementById('care-count');
-  if (!userFaction) { el.textContent = '0'; return; }
-  el.textContent = carePackages.toLocaleString();
+/* ---------------- LIVE STATS (HUD + reward cards) ---------------- */
+function updateStats() {
+  const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setTxt('hud-bongs', bongs.toLocaleString());
+  setTxt('hud-boxes', boxesGrabbed.toLocaleString());
+  setTxt('bong-count', bongs.toLocaleString());
+  setTxt('jackpot-left', jackpotsRemaining);
+  setTxt('box-count', lootBoxes.length);
 }
 
-/* ---------------- VAULT MODAL ---------------- */
+/* ---------------- REWARD MODAL ---------------- */
 const overlay = document.getElementById('vault-overlay');
-function openVault(storeName) {
-  userTriggeredVault = true;
+function openReward(type, storeName) {
   document.getElementById('vault-store').textContent = storeName;
+  const core  = document.getElementById('reward-core');
+  const title = document.getElementById('reward-title');
+  const amt   = document.getElementById('reward-amt');
+  if (type === 'jackpot') {
+    core.textContent = '🎓';
+    title.textContent = 'STUDENT LOAN FORGIVENESS';
+    amt.textContent = 'NOK 500 000';
+  }
   // confetti
   document.querySelectorAll('.confetti').forEach(c=>c.remove());
   const colors = ['#FFD24A','#FF8A00','#EF4444','#3B82F6','#22C55E','#fff'];
@@ -529,17 +769,232 @@ function showToast(msg) {
   toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
+/* ---------------- ONBOARDING HEX GRAPHIC ---------------- */
+// Draws the same pointy-top hex turf as the live map, coloured by nearest
+// faction "capital" so the hexes form contiguous regions, with one boundary
+// hex flipping colour to show turf changing hands.
+function buildOnbHexGrid(hostId, opts = {}) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const W = 300, H = 168, R = 22;
+  const dx = Math.sqrt(3) * R, dy = 1.5 * R;
+  const seeds = [
+    { f: 'ruby',   x: W * 0.24, y: H * 0.30 },
+    { f: 'cobalt', x: W * 0.76, y: H * 0.28 },
+    { f: 'amber',  x: W * 0.26, y: H * 0.74 },
+    { f: 'jade',   x: W * 0.74, y: H * 0.72 },
+  ];
+  const hexes = [];
+  let row = 0;
+  for (let y = R * 0.8; y <= H - R * 0.2; y += dy, row++) {
+    const xOff = (row % 2) ? dx / 2 : 0;
+    for (let x = xOff + dx / 2; x <= W; x += dx) {
+      let nb = seeds[0], n2 = seeds[1], d1 = Infinity, d2 = Infinity;
+      for (const s of seeds) {
+        const d = (s.x - x) ** 2 + (s.y - y) ** 2;
+        if (d < d1) { d2 = d1; n2 = nb; d1 = d; nb = s; }
+        else if (d < d2) { d2 = d; n2 = s; }
+      }
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 180 * (60 * i - 30);
+        pts.push(`${(x + R * Math.cos(a)).toFixed(1)},${(y + R * Math.sin(a)).toFixed(1)}`);
+      }
+      hexes.push({ x, y, owner: nb.f, runner: n2.f, ratio: Math.sqrt(d1) / Math.sqrt(d2), pts: pts.join(' ') });
+    }
+  }
+  // highlight one hex: a flipping boundary hex, or the central "loot drop" hex
+  let special = null;
+  if (opts.flip) {
+    for (const h of hexes) {
+      if (h.x < W * 0.28 || h.x > W * 0.72 || h.y < H * 0.28 || h.y > H * 0.72) continue;
+      if (!special || h.ratio > special.ratio) special = h;
+    }
+  } else if (opts.target) {
+    let bd = Infinity;
+    for (const h of hexes) {
+      const d = (h.x - W / 2) ** 2 + (h.y - H / 2) ** 2;
+      if (d < bd) { bd = d; special = h; }
+    }
+  }
+  const body = hexes.map(h => {
+    const c = FACTIONS[h.owner].color;
+    if (h === special && opts.flip) {
+      return `<polygon class="hex-flip" points="${h.pts}" fill="${c}" ` +
+             `style="--cA:${FACTIONS[h.owner].color};--cB:${FACTIONS[h.runner].color}"/>`;
+    }
+    if (h === special && opts.target) {
+      return `<polygon class="hex-target" points="${h.pts}" fill="${c}"/>`;
+    }
+    return `<polygon points="${h.pts}" fill="${c}" fill-opacity="0.42" stroke="${c}" stroke-opacity="0.55"/>`;
+  }).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+}
+
+/* ---------------- ONBOARDING (paced pitch) ---------------- */
+const onbEl = document.getElementById('onboarding');
+let onbStep = 0;
+const onbSlides = onbEl ? [...onbEl.querySelectorAll('.onb-slide')] : [];
+const onbDotsWrap = document.getElementById('onb-dots');
+let pendingStage = false;
+
+if (onbDotsWrap) {
+  onbDotsWrap.innerHTML = onbSlides.map((_, i) => `<span class="onb-dot${i === 0 ? ' on' : ''}"></span>`).join('');
+}
+const onbDots = onbDotsWrap ? [...onbDotsWrap.querySelectorAll('.onb-dot')] : [];
+
+function showOnbStep(i) {
+  onbStep = Math.max(0, Math.min(i, onbSlides.length - 1));
+  onbSlides.forEach((s, idx) => s.classList.toggle('active', idx === onbStep));
+  onbDots.forEach((d, idx) => d.classList.toggle('on', idx === onbStep));
+  const cur = onbSlides[onbStep];
+  if (cur && cur.dataset.reveal === 'faction' && !userFaction) onbRevealFaction();
+}
+
+function onbRevealFaction() {
+  const f = assignRandomFaction(true);
+  const F = FACTIONS[f];
+  const el = document.getElementById('onb-faction');
+  if (el) el.innerHTML = `
+    <div class="onb-badge" style="--fc:${F.color}">${F.name[0]}</div>
+    <div class="onb-fname" style="color:${F.color}">${F.name}</div>
+    <div class="onb-fdesc">${F.desc}</div>`;
+}
+
+function finishOnboarding() {
+  if (!userFaction) assignRandomFaction(true); // covers the "skip intro" path
+  if (onbEl) {
+    onbEl.classList.add('hide');
+    setTimeout(() => onbEl.remove(), 450);
+  }
+  enterMapStage();
+}
+
+/* ---------------- FULL-SCREEN MAP FINALE ---------------- */
+function enterMapStage() {
+  if (!mapReady) { pendingStage = true; focusUser(); return; }
+  pendingStage = false;
+  stageActive = true; // freeze loot boxes so the nearest one (and its route) stays put
+  document.body.classList.add('map-stage');
+  google.maps.event.trigger(map, 'resize');
+  focusUser();
+  const near = ensureNearbyLootBox();
+  // stop every current box from expiring while the finale is on screen
+  lootBoxes.forEach(b => clearTimeout(b.timer));
+  // frame the player and the nearby loot box together
+  if (near) {
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(userLocation);
+    bounds.extend({ lat: near.m.lat, lng: near.m.lng });
+    map.fitBounds(bounds, 120);
+  }
+  showStageCallout(near);
+  if (near) drawWalkingRoute(near);
+}
+
+function showStageCallout(near) {
+  const el = document.getElementById('stage-callout');
+  if (!el) return;
+  if (near) {
+    el.querySelector('.stage-store').textContent = near.m.name;
+    el.querySelector('.stage-dist').textContent = fmtDist(near.d) + ' away';
+    el.querySelector('.stage-go').href = mapsDirUrl(near.m);
+    el.querySelector('.stage-go').onclick = () => openInfo(near.m);
+  }
+  el.classList.add('show');
+}
+
+/* draws a real dotted-orange WALKING route from the player to the nearest loot box */
+let dirService = null, dirRenderer = null;
+const WALK_LINE = {
+  strokeOpacity: 0,
+  icons: [{
+    icon: { path: 'M 0,-1 0,1', strokeColor: '#FF5B24', strokeOpacity: 1, strokeWeight: 4, scale: 3 },
+    offset: '0', repeat: '14px',
+  }],
+};
+
+function drawWalkingRoute(near) {
+  if (!map || !near || !google.maps.DirectionsService) return;
+  clearRoute();
+  if (!dirService) {
+    dirService = new google.maps.DirectionsService();
+    dirRenderer = new google.maps.DirectionsRenderer({
+      suppressMarkers: true, preserveViewport: true, polylineOptions: WALK_LINE,
+    });
+  }
+  dirService.route({
+    origin: userLocation,
+    destination: { lat: near.m.lat, lng: near.m.lng },
+    travelMode: google.maps.TravelMode.WALKING,
+  }, (res, status) => {
+    if (status === 'OK') {
+      dirRenderer.setMap(map);
+      dirRenderer.setDirections(res);
+      const leg = res.routes[0] && res.routes[0].legs[0];
+      const el = document.getElementById('stage-callout');
+      if (leg && el) el.querySelector('.stage-dist').textContent =
+        `🚶 ${leg.duration.text} walk · ${leg.distance.text}`;
+    } else {
+      // No straight-line fallback (it looks bad). Surface why the route failed.
+      console.warn(`[Tæppin'] Walking route unavailable (${status}). ` +
+        `Enable the "Directions API" for this key in Google Cloud Console.`);
+    }
+  });
+}
+
+function clearRoute() {
+  if (dirRenderer) dirRenderer.setMap(null);
+}
+
+function exitMapStage() {
+  stageActive = false; // loot boxes resume spawning/expiring on the dashboard map
+  document.body.classList.remove('map-stage');
+  const el = document.getElementById('stage-callout');
+  if (el) el.classList.remove('show');
+  clearRoute();
+  if (map) {
+    google.maps.event.trigger(map, 'resize');
+    map.setCenter(userLocation);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+if (onbEl) {
+  onbEl.querySelectorAll('.onb-next').forEach(b => b.addEventListener('click', () => showOnbStep(onbStep + 1)));
+  const skipIntro = document.getElementById('onb-skipintro');
+  if (skipIntro) skipIntro.addEventListener('click', () => showOnbStep(onbSlides.length - 1));
+  const locBtn = document.getElementById('onb-locate');
+  if (locBtn) locBtn.addEventListener('click', async () => {
+    locBtn.disabled = true; locBtn.textContent = '📍 Locating…';
+    await requestLocation();
+    finishOnboarding();
+  });
+  const skipBtn = document.getElementById('onb-skip');
+  if (skipBtn) skipBtn.addEventListener('click', finishOnboarding);
+}
+const stageExit = document.getElementById('stage-exit');
+if (stageExit) stageExit.addEventListener('click', exitMapStage);
+
 /* ---------------- BOOT ---------------- */
 renderScoreboard();
-renderTapZone();
+renderJoinZone();
+updateStats();
+buildOnbHexGrid('onb-hexgrid', { flip: true });
+buildOnbHexGrid('onb-hexgrid-loot', { target: true });
 // seed a few feed items
 for (let i=0;i<5;i++) {
   const m = merchants[Math.floor(Math.random()*STORE_COUNT)];
   pushFeed(`User <b>@${rnd(USERNAMES)}</b> tapped at ${m.name}`, leader(m));
 }
-// Load Google Maps, then start the simulation. If the map can't load
-// (missing key / billing), still run the rest of the demo.
+// Load Google Maps, then start the simulation + loot-box spawns. If the map
+// can't load (missing key / billing), still run the rest of the demo.
 loadGoogleMaps()
-  .then(() => { initMap(); })
+  .then(() => {
+    initMap();
+    // seed a couple of boxes, then keep topping them up (paused during the finale)
+    spawnLootBox(); spawnLootBox();
+    setInterval(() => { if (!stageActive && Math.random() < 0.7) spawnLootBox(); }, 4000);
+  })
   .catch(showMapError)
   .finally(() => { setInterval(tick, TICK_MS); });

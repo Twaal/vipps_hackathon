@@ -24,7 +24,6 @@
 
 <!-- HERO -->
 <header class="hero">
-  <div class="live-badge"><span class="live-dot"></span> LIVE · SIMULATION ACTIVE</div>
   <h1>Turn Every Payment Into a <span class="accent">Power Move</span></h1>
   <p class="sub">A real-time territory war, embedded inside the Vipps app.</p>
   <div class="faction-dots">
@@ -37,19 +36,6 @@
     <span class="label">4 factions. 1 city. Your tap decides.</span>
   </div>
 </header>
-
-<!-- FACTION PICKER -->
-<section id="join">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="eyebrow">Join the War</div>
-      <h2>Choose Your Faction</h2>
-      <p>Pick a side. Every purchase you make becomes a tap for your colour.</p>
-    </div>
-    <div class="faction-grid" id="faction-grid"></div>
-    <div class="tap-zone" id="tap-zone"></div>
-  </div>
-</section>
 
 <!-- MAP -->
 <section id="map-section">
@@ -65,8 +51,26 @@
       <span class="item"><span class="sw" style="background:var(--cobalt)"></span> Cobalt</span>
       <span class="item"><span class="sw" style="background:var(--jade)"></span> Jade</span>
       <span class="item"><span class="sw" style="background:var(--amber)"></span> Amber</span>
-      <span class="item">🔒 = active 3h shield</span>
+      <span class="item">📍 = you · 🎁 = loot box · 🔒 = shielded</span>
     </div>
+
+    <div class="nearby">
+      <h3 class="nearby-title">📍 Near you</h3>
+      <div class="nearby-list" id="nearby-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FACTION DRAFT -->
+<section id="join">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Get Drafted</div>
+      <h2>You Don't Pick Your Faction</h2>
+      <p>Factions are assigned at random to keep the war balanced — no stacking the strongest colour.</p>
+    </div>
+    <div class="faction-grid" id="faction-grid"></div>
+    <div class="tap-zone" id="tap-zone"></div>
   </div>
 </section>
 
@@ -104,26 +108,30 @@
     <div class="reward-grid">
       <div class="reward-card vault">
         <div class="topbar"></div>
-        <div class="kicker">Hero Drop</div>
-        <h3>Vault Cracker 🏆</h3>
-        <p class="desc">The single user whose tap triggers a takeover gets a guaranteed premium reward.</p>
+        <div class="kicker">On The Map</div>
+        <h3>Loot Boxes 🎁</h3>
+        <p class="desc">Boxes spawn on stores across the city. Centre the map on a 🎁 and tap to grab it.</p>
         <ul class="reward-list">
-          <li><span class="chk">✦</span> 100–500 NOK Vipps cash</li>
-          <li><span class="chk">✦</span> High-value meal voucher</li>
-          <li><span class="chk">✦</span> Exclusive faction badge</li>
+          <li><span class="chk">✦</span> Most boxes are worth <b>NOK 50–100</b></li>
+          <li><span class="chk">✦</span> <b>5 city-wide</b> pay off your student loan — up to <b>NOK 500 000</b></li>
+          <li><span class="chk">✦</span> Anyone can grab a box; owning the turf gives <b>10× odds</b> to crack it</li>
         </ul>
+        <div class="care-counter vault-counter">
+          <span><b id="jackpot-left">5</b> student-loan boxes left</span>
+          <span><b id="box-count">0</b> live on the map now</span>
+        </div>
       </div>
       <div class="reward-card care">
         <div class="topbar"></div>
-        <div class="kicker">Faction Drop</div>
-        <h3>Care Package 📦</h3>
-        <p class="desc">Every faction member city-wide gets a silent drop when their faction captures a store.</p>
+        <div class="kicker">Every Tap Counts</div>
+        <h3>Bong Lottery 🎟️</h3>
+        <p class="desc">Each tap earns <b>bongs</b> — lottery tickets for the Student Loan Forgiveness giveaway.</p>
         <ul class="reward-list">
-          <li><span class="chk">✦</span> Free coffee voucher</li>
-          <li><span class="chk">✦</span> Merchant discount</li>
-          <li><span class="chk">✦</span> 24h expiry = next-day visit</li>
+          <li><span class="chk">✦</span> +1 bong for a tap on contested turf</li>
+          <li><span class="chk">✦</span> <b>10× bongs</b> when you tap a store your faction controls</li>
+          <li><span class="chk">✦</span> More bongs = better odds in the giveaway draw</li>
         </ul>
-        <div class="care-counter">Your faction has earned <b id="care-count">0</b> care packages today</div>
+        <div class="care-counter">You hold <b id="bong-count">0</b> bongs in the giveaway</div>
       </div>
     </div>
   </div>
@@ -167,16 +175,142 @@
   </div>
 </footer>
 
+<!-- ONBOARDING (paced pitch) -->
+<div id="onboarding" class="onb">
+  <div class="onb-card">
+    <button class="onb-skipintro" id="onb-skipintro">Skip intro ↦</button>
+    <div class="onb-dots" id="onb-dots"></div>
+
+    <!-- 0 · opener -->
+    <div class="onb-slide active">
+      <div class="onb-gfx" aria-hidden="true"><span class="onb-orb"></span></div>
+      <h2>Welcome to <span class="accent">TÆPPIN'</span></h2>
+      <p>Oslo is split between four factions fighting for every street corner. Your Vipps payments are your weapon — every tap claims turf.</p>
+      <button class="tap-btn onb-next">Show me how →</button>
+    </div>
+
+    <!-- 1 · tap = pay -->
+    <div class="onb-slide">
+      <div class="onb-gfx onb-tap" aria-hidden="true">
+        <span class="tap-ring"></span><span class="tap-ring"></span>
+        <span class="tap-pad">📱</span>
+        <span class="tap-pop">+1</span>
+      </div>
+      <h2>Every tap is a payment</h2>
+      <p>Pay at any store in the city and it counts as a <b>tap</b> for your faction. Minimum purchase is just <b>NOK 5</b> — real spend, no spam.</p>
+      <button class="tap-btn onb-next">Next →</button>
+    </div>
+
+    <!-- 2 · taps unlock turf -->
+    <div class="onb-slide">
+      <div class="onb-hex" aria-hidden="true">
+        <div class="onb-hexgrid" id="onb-hexgrid"></div>
+        <span class="hex-tag">Most taps flips the hex</span>
+      </div>
+      <h2>Taps unlock the turf</h2>
+      <p>Whichever faction racks up the most taps at a store <b>controls that turf</b>. Out-tap your rivals and watch the map turn your colour.</p>
+      <button class="tap-btn onb-next">Next →</button>
+    </div>
+
+    <!-- 3 · loot boxes drop -->
+    <div class="onb-slide">
+      <div class="onb-hex" aria-hidden="true">
+        <div class="onb-hexgrid" id="onb-hexgrid-loot"></div>
+        <span class="hex-ring"></span>
+        <span class="hex-loot">🎁</span>
+        <span class="hex-tag">Loot box drops here</span>
+      </div>
+      <h2>Loot boxes drop on the map</h2>
+      <p>Loot boxes appear on random stores. <b>Anyone can grab one</b> — it doesn't matter whose turf it's on. First tap at the store claims it.</p>
+      <button class="tap-btn onb-next">Next →</button>
+    </div>
+
+    <!-- 4 · own the turf, own the odds -->
+    <div class="onb-slide">
+      <div class="onb-gfx onb-odds" aria-hidden="true">
+        <span class="odds-turf"></span>
+        <span class="odds-loot">🎁</span>
+        <span class="odds-badge">10×</span>
+      </div>
+      <h2>Own the turf, own the odds</h2>
+      <p>If your faction controls a store when a loot box drops there, you get a <b>10× better chance</b> to crack it open. Anyone can still grab it — you just have the edge.</p>
+      <button class="tap-btn onb-next">Next →</button>
+    </div>
+
+    <!-- 5 · faction reveal -->
+    <div class="onb-slide" data-reveal="faction">
+      <h2>You've been drafted</h2>
+      <div id="onb-faction" class="onb-faction"></div>
+      <p class="onb-muted">Factions are assigned at random to keep the war balanced — you can't pick. Wear the colour with pride.</p>
+      <button class="tap-btn onb-next">What can I win? →</button>
+    </div>
+
+    <!-- 6 · the big reveal -->
+    <div class="onb-slide onb-prize">
+      <div class="onb-gfx prize-stage" aria-hidden="true">
+        <span class="prize-flash"></span>
+        <div class="pbox">
+          <div class="pburst">
+            <span style="--dx:-82px;--dy:-96px;--rot:-25deg">🎓</span>
+            <span style="--dx:-38px;--dy:-126px;--rot:12deg">💵</span>
+            <span style="--dx:2px;--dy:-140px;--rot:-8deg">🎓</span>
+            <span style="--dx:42px;--dy:-122px;--rot:18deg">💵</span>
+            <span style="--dx:84px;--dy:-96px;--rot:28deg">🎓</span>
+            <span style="--dx:-104px;--dy:-54px;--rot:-32deg">🪙</span>
+            <span style="--dx:106px;--dy:-58px;--rot:30deg">🪙</span>
+          </div>
+          <div class="pbox-lid"></div>
+          <div class="pbox-body"></div>
+        </div>
+      </div>
+      <h2>The prize</h2>
+      <p>Most loot boxes are worth <b>NOK 50–100</b>. But <b>5 boxes hidden at random across Oslo</b> hold the big one…</p>
+      <div class="onb-bigreveal">STUDENT LOAN<br>FORGIVENESS</div>
+      <div class="onb-bigamt">up to NOK 500 000</div>
+      <button class="tap-btn onb-next">Take me to the map →</button>
+    </div>
+
+    <!-- 7 · locate -->
+    <div class="onb-slide">
+      <div class="onb-map" aria-hidden="true">
+        <span class="mm-dot" style="left:24%;top:34%;background:var(--ruby)"></span>
+        <span class="mm-dot" style="left:71%;top:30%;background:var(--cobalt)"></span>
+        <span class="mm-dot" style="left:33%;top:72%;background:var(--amber)"></span>
+        <span class="mm-dot" style="left:78%;top:66%;background:var(--jade)"></span>
+        <span class="mm-pinring"></span>
+        <span class="mm-pin">📍</span>
+      </div>
+      <h2>Find your turf</h2>
+      <p>We'll use your location to show the nearest store and loot box — and route you straight there.</p>
+      <button class="tap-btn" id="onb-locate">📍 Use my location</button>
+      <button class="onb-skip" id="onb-skip">Skip — drop me in central Oslo</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULL-SCREEN MAP FINALE CALLOUT -->
+<div id="stage-callout" class="stage-callout">
+  <div class="stage-info">
+    <div class="stage-kicker">🎁 Nearest loot box</div>
+    <div class="stage-store">—</div>
+    <div class="stage-dist">—</div>
+  </div>
+  <div class="stage-btns">
+    <a class="tap-btn stage-go" href="#" target="_blank" rel="noopener">Take me there ↗</a>
+    <button class="stage-exit" id="stage-exit">Enter the city →</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
-<!-- VAULT MODAL -->
+<!-- REWARD MODAL -->
 <div id="vault-overlay">
   <div class="vault-box">
-    <div class="vault-ring"><div class="vault-core">🔓</div></div>
-    <h2>YOU CRACKED THE VAULT</h2>
-    <div class="reward-amt">250 NOK</div>
-    <div class="reward-sub">Your takeover at <span class="store-name" id="vault-store">—</span> earned the Hero Drop</div>
+    <div class="vault-ring"><div class="vault-core" id="reward-core">🎓</div></div>
+    <h2 id="reward-title">STUDENT LOAN FORGIVENESS</h2>
+    <div class="reward-amt" id="reward-amt">NOK 500 000</div>
+    <div class="reward-sub">Your loot box at <span class="store-name" id="vault-store">—</span> pays off your student loan 🎓</div>
     <button class="vault-close" id="vault-close">Claim Reward</button>
   </div>
 </div>

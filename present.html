@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TÆPPIN' — Stage Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background:
+      radial-gradient(1000px 700px at 50% -15%, rgba(255,91,36,0.16), transparent 60%),
+      radial-gradient(700px 500px at 10% 110%, rgba(255,91,36,0.06), transparent 60%),
+      #0E0E10;
+    color: #fff; font-family: 'Inter', system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    height: 100vh; overflow: hidden;
+  }
+  .stage { display: flex; align-items: center; gap: 72px; }
+
+  .pitch { max-width: 380px; }
+  .pitch .logo {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px;
+    color: #FF5B24; letter-spacing: 0.02em; margin-bottom: 18px;
+  }
+  .pitch h1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 44px; line-height: 1.04; margin-bottom: 16px; }
+  .pitch h1 .accent { color: #FF5B24; }
+  .pitch p { color: #9CA3AF; font-size: 17px; line-height: 1.6; }
+  .pitch .badge {
+    display: inline-block; margin-top: 22px; font-size: 12px; letter-spacing: 0.14em;
+    color: #9CA3AF; border: 1px solid rgba(255,255,255,0.14); padding: 8px 13px;
+    border-radius: 999px; text-transform: uppercase;
+  }
+
+  /* phone mockup */
+  .phone-wrap { transform-origin: center center; }
+  .phone {
+    position: relative; width: 390px; height: 844px; border-radius: 56px;
+    background: #08080a; padding: 14px;
+    box-shadow:
+      0 0 0 2px #1d1d22,
+      0 50px 130px -30px rgba(0,0,0,0.9),
+      0 0 90px -20px rgba(255,91,36,0.28);
+  }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: #0E0E10; }
+  .screen iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .notch {
+    position: absolute; top: 13px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 33px; background: #000; border-radius: 18px; z-index: 5;
+  }
+  .side-btn { position: absolute; width: 3px; background: #1d1d22; border-radius: 3px; }
+  .side-btn.power { right: -5px; top: 200px; height: 92px; }
+  .side-btn.vol1 { left: -5px; top: 168px; height: 56px; }
+  .side-btn.vol2 { left: -5px; top: 236px; height: 56px; }
+
+  /* hide the pitch copy on narrower screens so the phone stays centred */
+  @media (max-width: 1180px) { .pitch { display: none; } .stage { gap: 0; } }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="pitch">
+      <div class="logo">TÆPPIN'</div>
+      <h1>Turn every payment into a <span class="accent">power move.</span></h1>
+      <p>A real-time territory war embedded in Vipps — tap to claim turf, grab loot boxes, and win the grand prize.</p>
+      <div class="badge">Vipps Hackathon 2026</div>
+    </div>
+
+    <div class="phone-wrap" id="phoneWrap">
+      <div class="phone">
+        <span class="side-btn vol1"></span>
+        <span class="side-btn vol2"></span>
+        <span class="side-btn power"></span>
+        <div class="notch"></div>
+        <div class="screen">
+          <iframe id="app" src="./index.html" allow="geolocation; fullscreen"
+                  title="Tæppin' demo"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const wrap = document.getElementById('phoneWrap');
+    const PHONE_W = 390, PHONE_H = 844, MARGIN = 48;
+    function fit() {
+      const s = Math.min((window.innerHeight - MARGIN) / PHONE_H,
+                         (window.innerWidth  - MARGIN) / PHONE_W, 1.45);
+      wrap.style.transform = 'scale(' + s + ')';
+      // scale() doesn't change layout size, so the un-scaled 390×844 box leaves a
+      // gap (and can clip). Collapse the layout box to the visual size with margins.
+      wrap.style.margin = `${-(PHONE_H * (1 - s)) / 2}px ${-(PHONE_W * (1 - s)) / 2}px`;
+    }
+    window.addEventListener('resize', fit);
+    fit();
+  </script>
+</body>
+</html>
