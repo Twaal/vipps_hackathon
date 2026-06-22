@@ -211,6 +211,7 @@ let userLocation = { lat: 59.9139, lng: 10.7522 }; // default: central Oslo
 let locationReal = false;
 let mapReady = false;
 let pendingFocus = false;
+let pendingReveal = false;
 
 // distance helpers
 function distMeters(a, b) {
@@ -283,6 +284,7 @@ function initMap() {
   mapReady = true;
   focusUser();
   if (pendingStage) enterMapStage();
+  if (pendingReveal) revealNearestLoot();
 }
 
 /* ---------------- LOCATION & "NEAR YOU" ---------------- */
@@ -349,6 +351,14 @@ function renderNearby() {
       openInfo(m);
     });
   });
+}
+
+// Auto-open the popup for the nearest loot box (store breakdown + Maps link).
+function revealNearestLoot() {
+  if (!mapReady) { pendingReveal = true; return; }
+  pendingReveal = false;
+  const near = ensureNearbyLootBox();
+  if (near) openInfo(near.m);
 }
 
 function setStoreHexes(m, flash) {
@@ -904,6 +914,7 @@ function finishOnboarding() {
     focusUser();                     // real site → drop the user straight into the live map
     const ms = document.getElementById('map-section');
     if (ms) ms.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(revealNearestLoot, 500); // auto-pop the nearest loot box once the map settles
   }
 }
 
