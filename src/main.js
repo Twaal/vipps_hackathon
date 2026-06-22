@@ -240,7 +240,7 @@ function loadGoogleMaps() {
     if (!GMAPS_KEY) return reject(new Error('missing-key'));
     window.__initGMaps = () => resolve();
     const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GMAPS_KEY)}&v=weekly&callback=__initGMaps`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GMAPS_KEY)}&v=weekly&loading=async&callback=__initGMaps`;
     s.async = true;
     s.onerror = () => reject(new Error('load-failed'));
     document.head.appendChild(s);
