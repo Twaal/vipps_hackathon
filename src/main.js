@@ -111,7 +111,7 @@ FKEYS.forEach(f => {
     <div class="initial">${F.name[0]}</div>
     <h3>${F.name}</h3>
     <div class="desc">${F.desc}</div>
-    <div class="members"><b id="mem-${f}">${memberCounts[f].toLocaleString()}</b> warriors</div>
+    <div class="members"><b id="mem-${f}">${memberCounts[f].toLocaleString()}</b> members</div>
   `;
   fgrid.appendChild(card);
 });
@@ -124,14 +124,14 @@ function assignRandomFaction(silent = false) {
   renderJoinZone();
   renderScoreboard();
   updateStats();
-  if (!silent) showToast(`🎲 You've been drafted into ${FACTIONS[f].name}!`);
+  if (!silent) showToast(`🎲 You're on team ${FACTIONS[f].name}!`);
   return f;
 }
 
 function renderJoinZone() {
   const tz = document.getElementById('tap-zone');
   if (!userFaction) {
-    tz.innerHTML = `<button class="tap-btn enter-btn" id="enter-btn">🎲 ENTER THE WAR <span style="font-size:14px;font-weight:500;">(get a random faction)</span></button>`;
+    tz.innerHTML = `<button class="tap-btn enter-btn" id="enter-btn">🎲 JOIN A TEAM <span style="font-size:14px;font-weight:500;">(assigned at random)</span></button>`;
     document.getElementById('enter-btn').addEventListener('click', () => assignRandomFaction());
     return;
   }
@@ -516,7 +516,7 @@ FKEYS.forEach(f => {
   card.style.setProperty('--fc', F.color);
   card.style.setProperty('--fc-glow', F.color + '44');
   card.innerHTML = `
-    <span class="mine-tag" style="display:none">YOUR FACTION</span>
+    <span class="mine-tag" style="display:none">YOUR TEAM</span>
     <div class="fname"><span class="sw" style="background:${F.color}"></span>${F.name}</div>
     <div class="big" id="stores-${f}">0</div>
     <div class="big-l">Stores owned</div>
@@ -868,6 +868,7 @@ function onbNavigate(dir) {
   else showOnbStep(onbStep + dir);
 }
 window.__onbNav = onbNavigate; // called by the presenter page (same-origin)
+window.__onbGoto = (i) => showOnbStep(i); // jump to a slide (used by the PDF exporter)
 window.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') { if (onbVisible()) { e.preventDefault(); onbNavigate(1); } }
   else if (e.key === 'ArrowLeft') { if (onbVisible()) { e.preventDefault(); onbNavigate(-1); } }
@@ -879,8 +880,7 @@ function onbRevealFaction() {
   const el = document.getElementById('onb-faction');
   if (el) el.innerHTML = `
     <div class="onb-badge" style="--fc:${F.color}">${F.name[0]}</div>
-    <div class="onb-fname" style="color:${F.color}">${F.name}</div>
-    <div class="onb-fdesc">${F.desc}</div>`;
+    <div class="onb-fname">You are on team <span style="color:${F.color}">${F.name}</span></div>`;
 }
 
 function finishOnboarding() {
@@ -911,71 +911,23 @@ function enterMapStage() {
     bounds.extend({ lat: near.m.lat, lng: near.m.lng });
     map.fitBounds(bounds, 120);
   }
-  showStageCallout(near);
-  if (near) drawWalkingRoute(near);
+  showStageCTA(near);
 }
 
-function showStageCallout(near) {
-  const el = document.getElementById('stage-callout');
+// large QR + call-to-action over the finale map (no Google Maps hand-off)
+function showStageCTA(near) {
+  const el = document.getElementById('stage-cta');
   if (!el) return;
-  if (near) {
-    el.querySelector('.stage-store').textContent = near.m.name;
-    el.querySelector('.stage-dist').textContent = fmtDist(near.d) + ' away';
-    el.querySelector('.stage-go').href = mapsDirUrl(near.m);
-    el.querySelector('.stage-go').onclick = () => openInfo(near.m);
-  }
+  const sub = el.querySelector('.stage-store');
+  if (sub) sub.textContent = near ? near.m.name : 'a store near you';
   el.classList.add('show');
-}
-
-/* draws a real dotted-orange WALKING route from the player to the nearest loot box */
-let dirService = null, dirRenderer = null;
-const WALK_LINE = {
-  strokeOpacity: 0,
-  icons: [{
-    icon: { path: 'M 0,-1 0,1', strokeColor: '#FF5B24', strokeOpacity: 1, strokeWeight: 4, scale: 3 },
-    offset: '0', repeat: '14px',
-  }],
-};
-
-function drawWalkingRoute(near) {
-  if (!map || !near || !google.maps.DirectionsService) return;
-  clearRoute();
-  if (!dirService) {
-    dirService = new google.maps.DirectionsService();
-    dirRenderer = new google.maps.DirectionsRenderer({
-      suppressMarkers: true, preserveViewport: true, polylineOptions: WALK_LINE,
-    });
-  }
-  dirService.route({
-    origin: userLocation,
-    destination: { lat: near.m.lat, lng: near.m.lng },
-    travelMode: google.maps.TravelMode.WALKING,
-  }, (res, status) => {
-    if (status === 'OK') {
-      dirRenderer.setMap(map);
-      dirRenderer.setDirections(res);
-      const leg = res.routes[0] && res.routes[0].legs[0];
-      const el = document.getElementById('stage-callout');
-      if (leg && el) el.querySelector('.stage-dist').textContent =
-        `🚶 ${leg.duration.text} walk · ${leg.distance.text}`;
-    } else {
-      // No straight-line fallback (it looks bad). Surface why the route failed.
-      console.warn(`[Tæppin'] Walking route unavailable (${status}). ` +
-        `Enable the "Directions API" for this key in Google Cloud Console.`);
-    }
-  });
-}
-
-function clearRoute() {
-  if (dirRenderer) dirRenderer.setMap(null);
 }
 
 function exitMapStage() {
   stageActive = false; // loot boxes resume spawning/expiring on the dashboard map
   document.body.classList.remove('map-stage');
-  const el = document.getElementById('stage-callout');
+  const el = document.getElementById('stage-cta');
   if (el) el.classList.remove('show');
-  clearRoute();
   if (map) {
     google.maps.event.trigger(map, 'resize');
     map.setCenter(userLocation);

@@ -9,8 +9,7 @@ map is the **Google Maps JavaScript API**, with a Voronoi turf-control overlay
 The map needs a Google Maps JS API key:
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), create/select a project,
-   enable **Maps JavaScript API** + **Directions API** (the walking route in the finale
-   uses Directions; without it the route falls back to a straight guide line), and enable billing.
+   enable **Maps JavaScript API**, and enable billing.
 2. Create an API key. Restrict it to **HTTP referrers** for your domains
    (e.g. `http://localhost:5173/*` and your Vercel URL) and to the Maps JavaScript API.
 3. Copy `.env.example` to `.env` and set the key:
@@ -66,16 +65,43 @@ polished phone frame on a dark stage backdrop, scaled to fill the projector.
 - Deployed: `https://your-app.vercel.app/present.html`
 
 On stage:
-1. Open `present.html` in the browser.
-2. Click **⛶ Fullscreen** (or press F11) and project your laptop screen.
-3. Drive the pitch by clicking through the phone like a real device.
-4. **↻ Restart pitch** reloads the onboarding so you can re-run it between takes.
+1. Open `present.html` in the browser and press **F11** to go full-screen; project your laptop.
+2. Drive the pitch with the **← / →** arrow keys (or click the buttons in the phone).
+3. Reload the page to start the pitch over between takes.
 
 Tips:
 - On the onboarding's location step, choose **Skip — central Oslo** for a predictable
   demo (avoids the live geolocation prompt). The phone iframe is geolocation-enabled if
   you do want a real fix.
 - The page must be served over `https://` (or `localhost`) for geolocation + Maps.
+
+## Export the deck to PDF / images (for submission)
+
+To turn the live pitch into a static deck for Google Drive / Slides:
+
+```bash
+npm install            # installs puppeteer
+npm run dev            # leave running in one terminal
+npm run export         # in another terminal
+```
+
+The exporter drives your **locally-installed Google Chrome** (no Chromium download needed).
+If you don't have Chrome, grab Puppeteer's bundled browser once with
+`npx puppeteer browsers install chrome`, then re-run `npm run export`.
+
+Output lands in `export/`:
+- `taeppin-deck.pdf` — one slide per page (16:10). Upload to Drive, or in Google Slides
+  use **File → Import slides** / insert the PNGs.
+- `slide-01.png …` — one image per slide; drag straight onto Google Slides.
+
+Export the deployed version instead of localhost:
+
+```bash
+URL=https://vippshackathon.vercel.app/present npm run export
+```
+
+**No-setup alternative:** open `/present`, step through with **→**, and screenshot each
+slide (Windows: `Win+Shift+S`), then paste the images into Google Slides.
 
 Lighter-weight alternatives if you don't want the bundled mockup: Chrome DevTools device
 toolbar (`Ctrl+Shift+M`), or device-frame apps like Responsively / Sizzy / Polypane

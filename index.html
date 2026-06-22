@@ -25,7 +25,7 @@
 <!-- HERO -->
 <header class="hero">
   <h1>Turn Every Payment Into a <span class="accent">Power Move</span></h1>
-  <p class="sub">A real-time territory war, embedded inside the Vipps app.</p>
+  <p class="sub">A real-time territory game, embedded inside the Vipps app.</p>
   <div class="faction-dots">
     <span class="dots">
       <span class="fd" style="background:var(--ruby)"></span>
@@ -33,7 +33,7 @@
       <span class="fd" style="background:var(--jade)"></span>
       <span class="fd" style="background:var(--amber)"></span>
     </span>
-    <span class="label">4 factions. 1 city. Your tap decides.</span>
+    <span class="label">4 teams. 1 city. Your tap decides.</span>
   </div>
 </header>
 
@@ -65,9 +65,9 @@
 <section id="join">
   <div class="wrap">
     <div class="section-head">
-      <div class="eyebrow">Get Drafted</div>
-      <h2>You Don't Pick Your Faction</h2>
-      <p>Factions are assigned at random to keep the war balanced — no stacking the strongest colour.</p>
+      <div class="eyebrow">Your Team</div>
+      <h2>You Don't Pick Your Team</h2>
+      <p>Teams are assigned at random to keep things balanced — no stacking the strongest one.</p>
     </div>
     <div class="faction-grid" id="faction-grid"></div>
     <div class="tap-zone" id="tap-zone"></div>
@@ -128,7 +128,7 @@
         <p class="desc">Each tap earns <b>bongs</b> — lottery tickets for the Student Loan Forgiveness giveaway.</p>
         <ul class="reward-list">
           <li><span class="chk">✦</span> +1 bong for a tap on contested turf</li>
-          <li><span class="chk">✦</span> <b>10× bongs</b> when you tap a store your faction controls</li>
+          <li><span class="chk">✦</span> <b>10× bongs</b> when you tap a store your team controls</li>
           <li><span class="chk">✦</span> More bongs = better odds in the giveaway draw</li>
         </ul>
         <div class="care-counter">You hold <b id="bong-count">0</b> bongs in the giveaway</div>
@@ -148,7 +148,7 @@
       <div class="rule-card"><div class="rule-icon">⏱️</div><div><h4>Daily Cap</h4><p>1 loot per store per 24h. No farming the same till.</p></div></div>
       <div class="rule-card"><div class="rule-icon">📍</div><div><h4>Active Proximity</h4><p>Must have tapped in your city in the last 60 min.</p></div></div>
       <div class="rule-card"><div class="rule-icon">💳</div><div><h4>5 NOK Minimum</h4><p>Real purchases only — no 1-øre spam taps.</p></div></div>
-      <div class="rule-card"><div class="rule-icon">⚡</div><div><h4>Underdog Multiplier</h4><p>Factions below 15% territory get 2×–3× tap power.</p></div></div>
+      <div class="rule-card"><div class="rule-icon">⚡</div><div><h4>Underdog Multiplier</h4><p>Teams below 15% territory get 2×–3× tap power.</p></div></div>
     </div>
   </div>
 </section>
@@ -185,7 +185,6 @@
     <div class="onb-slide active">
       <div class="onb-gfx" aria-hidden="true"><span class="onb-orb"></span></div>
       <h2>Welcome to <span class="accent">TÆPPIN'</span></h2>
-      <p>Oslo is split between four factions fighting for every street corner. Your Vipps payments are your weapon — every tap claims turf.</p>
       <button class="tap-btn onb-next">Show me how →</button>
     </div>
 
@@ -197,7 +196,6 @@
         <span class="tap-pop">+1</span>
       </div>
       <h2>Every tap is a payment</h2>
-      <p>Pay at any store in the city and it counts as a <b>tap</b> for your faction. Minimum purchase is just <b>NOK 5</b> — real spend, no spam.</p>
       <button class="tap-btn onb-next">Next →</button>
     </div>
 
@@ -208,7 +206,6 @@
         <span class="hex-tag">Most taps flips the hex</span>
       </div>
       <h2>Taps unlock the turf</h2>
-      <p>Whichever faction racks up the most taps at a store <b>controls that turf</b>. Out-tap your rivals and watch the map turn your colour.</p>
       <button class="tap-btn onb-next">Next →</button>
     </div>
 
@@ -221,7 +218,6 @@
         <span class="hex-tag">Loot box drops here</span>
       </div>
       <h2>Loot boxes drop on the map</h2>
-      <p>Loot boxes appear on random stores. <b>Anyone can grab one</b> — it doesn't matter whose turf it's on. First tap at the store claims it.</p>
       <button class="tap-btn onb-next">Next →</button>
     </div>
 
@@ -233,7 +229,6 @@
         <span class="odds-badge">10×</span>
       </div>
       <h2>Own the turf, own the odds</h2>
-      <p>If your faction controls a store when a loot box drops there, you get a <b>10× better chance</b> to crack it open. Anyone can still grab it — you just have the edge.</p>
       <button class="tap-btn onb-next">Next →</button>
     </div>
 
@@ -241,11 +236,24 @@
     <div class="onb-slide" data-reveal="faction">
       <h2>You've been drafted</h2>
       <div id="onb-faction" class="onb-faction"></div>
-      <p class="onb-muted">Factions are assigned at random to keep the war balanced — you can't pick. Wear the colour with pride.</p>
       <button class="tap-btn onb-next">What can I win? →</button>
     </div>
 
-    <!-- 6 · the big reveal -->
+    <!-- 6 · everyday prizes -->
+    <div class="onb-slide">
+      <div class="onb-gfx loot-prize" aria-hidden="true">
+        <span class="lp-ring"></span>
+        <span class="lp-box">🎁</span>
+        <span class="lp-c lp-c1">💵</span>
+        <span class="lp-c lp-c2">☕</span>
+        <span class="lp-c lp-c3">🥤</span>
+      </div>
+      <h2>Every box pays out</h2>
+      <div class="onb-bigamt">NOK 50–100 · free snacks</div>
+      <button class="tap-btn onb-next">But 5 are special… →</button>
+    </div>
+
+    <!-- 7 · the grand prize -->
     <div class="onb-slide onb-prize">
       <div class="onb-gfx prize-stage" aria-hidden="true">
         <span class="prize-flash"></span>
@@ -263,8 +271,7 @@
           <div class="pbox-body"></div>
         </div>
       </div>
-      <h2>The prize</h2>
-      <p>Most loot boxes are worth <b>NOK 50–100</b>. But <b>5 boxes hidden at random across Oslo</b> hold the big one…</p>
+      <h2>The grand prize</h2>
       <div class="onb-bigreveal">STUDENT LOAN<br>FORGIVENESS</div>
       <div class="onb-bigamt">up to NOK 500 000</div>
       <button class="tap-btn onb-next">Take me to the map →</button>
@@ -281,24 +288,20 @@
         <span class="mm-pin">📍</span>
       </div>
       <h2>Find your turf</h2>
-      <p>We'll use your location to show the nearest store and loot box — and route you straight there.</p>
       <button class="tap-btn" id="onb-locate">📍 Use my location</button>
       <button class="onb-skip" id="onb-skip">Skip — drop me in central Oslo</button>
     </div>
   </div>
 </div>
 
-<!-- FULL-SCREEN MAP FINALE CALLOUT -->
-<div id="stage-callout" class="stage-callout">
-  <div class="stage-info">
-    <div class="stage-kicker">🎁 Nearest loot box</div>
-    <div class="stage-store">—</div>
-    <div class="stage-dist">—</div>
-  </div>
-  <div class="stage-btns">
-    <a class="tap-btn stage-go" href="#" target="_blank" rel="noopener">Take me there ↗</a>
-    <button class="stage-exit" id="stage-exit">Enter the city →</button>
-  </div>
+<!-- FULL-SCREEN MAP FINALE — QR call to action -->
+<div id="stage-cta" class="stage-cta">
+  <img id="qr-stage" class="qr-canvas" alt="Scan to open Tæppin'"
+       src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=0&data=https%3A%2F%2Fvippshackathon.vercel.app%2F" />
+  <div class="stage-cta-head">Scan to claim your turf</div>
+  <div class="stage-cta-sub">There's a loot box at <span class="stage-store">a store near you</span></div>
+  <div class="stage-cta-url">vippshackathon.vercel.app</div>
+  <button class="stage-exit" id="stage-exit">Enter the city →</button>
 </div>
 
 <!-- TOAST -->

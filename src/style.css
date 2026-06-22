@@ -440,7 +440,21 @@ footer .dots .fd { width: 12px; height:12px; }
   box-shadow: 0 0 24px rgba(255,210,74,0.7); animation: badgePop 1.5s ease-in-out infinite; }
 @keyframes badgePop { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
 
-/* slide 6 — prize box opening */
+/* everyday-prizes slide — gift with coins/coupons floating out */
+.lp-box { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 54px; z-index: 3; animation: mmbob 1.6s ease-in-out infinite; }
+.lp-ring { position: absolute; left: 50%; top: 50%; width: 86px; height: 86px; border-radius: 50%; transform: translate(-50%,-50%); border: 2px solid var(--gold); z-index: 1; animation: mmpulse 2s ease-out infinite; }
+.lp-c { position: absolute; left: 50%; top: 50%; font-size: 24px; z-index: 2; opacity: 0; animation: lpFloat 3s ease-in-out infinite; }
+.lp-c1 { --tx: -72px; --ty: -28px; animation-delay: 0s; }
+.lp-c2 { --tx: 0px;   --ty: -60px; animation-delay: 1s; }
+.lp-c3 { --tx: 72px;  --ty: -28px; animation-delay: 2s; }
+@keyframes lpFloat {
+  0%   { transform: translate(-50%,-50%) scale(0.5); opacity: 0; }
+  30%  { opacity: 1; }
+  65%  { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty) - 14px)) scale(0.9); opacity: 0; }
+}
+
+/* grand-prize slide — prize box opening */
 .prize-stage { perspective: 720px; height: 152px; }
 .pbox { position: relative; width: 116px; height: 70px; transform-style: preserve-3d; align-self: flex-end; margin-bottom: 4px; animation: boxShake 3.2s ease-in-out infinite; }
 .pbox-body { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; border-radius: 8px;
@@ -523,24 +537,24 @@ body.map-stage #map-section .map-legend,
 body.map-stage #map-section .nearby { display: none; }
 body.map-stage #map { height: 100vh; border-radius: 0; border: none; }
 
-.stage-callout {
-  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(140%);
-  z-index: 5600; width: min(560px, calc(100% - 32px));
-  background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
-  padding: 18px 20px; box-shadow: 0 24px 60px -20px rgba(0,0,0,0.8);
-  display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
-  transition: transform .45s cubic-bezier(.2,1.1,.3,1);
+.stage-cta {
+  position: fixed; left: 50%; top: 22px; transform: translateX(-50%) translateY(-160%);
+  z-index: 5600; width: min(340px, calc(100% - 28px));
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 20px; box-shadow: 0 24px 60px -20px rgba(0,0,0,0.8);
+  transition: transform .5s cubic-bezier(.2,1.1,.3,1);
 }
-.stage-callout.show { transform: translateX(-50%) translateY(0); }
-.stage-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; color: var(--gold); text-transform: uppercase; }
-.stage-store { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 19px; margin: 3px 0; }
-.stage-dist { color: var(--muted); font-size: 13px; }
-.stage-btns { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.stage-go { font-size: 15px; padding: 12px 22px; text-decoration: none; }
+.stage-cta.show { transform: translateX(-50%) translateY(0); }
+.qr-canvas { width: 200px; height: 200px; background: #fff; border-radius: 12px; padding: 8px; }
+.stage-cta-head { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 24px; margin-top: 4px; }
+.stage-cta-sub { color: var(--muted); font-size: 13px; }
+.stage-cta-sub .stage-store { color: #fff; font-weight: 600; }
+.stage-cta-url { color: var(--orange); font-weight: 700; font-size: 14px; letter-spacing: 0.01em; }
 .stage-exit {
-  background: none; border: 1px solid var(--border); color: var(--text);
+  margin-top: 8px; background: none; border: 1px solid var(--border); color: var(--text);
   font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px;
-  padding: 12px 18px; border-radius: 14px; cursor: pointer;
+  padding: 11px 18px; border-radius: 14px; cursor: pointer;
 }
 .stage-exit:hover { border-color: rgba(255,255,255,0.3); }
 
