@@ -832,7 +832,16 @@ function buildOnbHexGrid(hostId, opts = {}) {
 }
 
 /* ---------------- ONBOARDING (paced pitch) ---------------- */
+// The QR-code finale is only for the stage pitch, where the app is embedded in
+// /present (an iframe). On the real site we go straight to the live map instead.
+const IN_PRESENT = window.self !== window.top;
 const onbEl = document.getElementById('onboarding');
+// The QR code (the "scan to play" slide + the finale overlay) is only for the
+// stage pitch in /present. On the real site, strip it so it never shows.
+if (!IN_PRESENT) {
+  onbEl?.querySelector('.onb-qr')?.remove();
+  document.getElementById('stage-cta')?.remove();
+}
 let onbStep = 0;
 const onbSlides = onbEl ? [...onbEl.querySelectorAll('.onb-slide')] : [];
 const onbDotsWrap = document.getElementById('onb-dots');
@@ -889,7 +898,13 @@ function finishOnboarding() {
     onbEl.classList.add('hide');
     setTimeout(() => onbEl.remove(), 450);
   }
-  enterMapStage();
+  if (IN_PRESENT) {
+    enterMapStage();                 // stage pitch → full-screen map + QR call-to-action
+  } else {
+    focusUser();                     // real site → drop the user straight into the live map
+    const ms = document.getElementById('map-section');
+    if (ms) ms.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 /* ---------------- FULL-SCREEN MAP FINALE ---------------- */
@@ -904,13 +919,10 @@ function enterMapStage() {
   const near = ensureNearbyLootBox();
   // stop every current box from expiring while the finale is on screen
   lootBoxes.forEach(b => clearTimeout(b.timer));
-  // frame the player and the nearby loot box together
-  if (near) {
-    const bounds = new google.maps.LatLngBounds();
-    bounds.extend(userLocation);
-    bounds.extend({ lat: near.m.lat, lng: near.m.lng });
-    map.fitBounds(bounds, 120);
-  }
+  // keep the player pin centred (sits under the QR) and zoom in enough that the
+  // coloured turf tiles fill the screen — no zoomed-out grey edges.
+  map.setCenter(userLocation);
+  map.setZoom(15);
   showStageCTA(near);
 }
 

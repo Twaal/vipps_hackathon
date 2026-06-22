@@ -526,6 +526,18 @@ footer .dots .fd { width: 12px; height:12px; }
 }
 .onb-prize .onb-emoji { animation: pop .6s cubic-bezier(.2,1.6,.4,1); }
 
+/* QR call-to-action slide (the closer) */
+.onb-qr-img {
+  width: 210px; height: 210px; display: block; margin: 6px auto 18px;
+  background: #fff; border-radius: 16px; padding: 10px;
+  box-shadow: 0 0 0 1px var(--border), 0 18px 55px -12px rgba(255,91,36,0.5);
+  animation: pop .5s cubic-bezier(.2,1.6,.4,1);
+}
+.onb-qr-url {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px;
+  color: var(--orange); letter-spacing: 0.01em;
+}
+
 /* ====================== FULL-SCREEN MAP STAGE ====================== */
 body.map-stage { overflow: hidden; }
 body.map-stage #map-section {
